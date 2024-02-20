@@ -23,6 +23,7 @@ class customerController extends Controller
             $customer->email = $request->email;
             // $customer->password = Crypt::encrypt($request->input('password'));
             $customer->password = Hash::make($request->input('password'));
+            $customer->role = 'admin';
             $customer->save();
 
             return response([
@@ -116,47 +117,92 @@ class customerController extends Controller
         
     }
 
-    public function passwordUpdate(Request $request){
+    public function updatePassword(Request $request){
         $validator = Validator::make($request->all() ,[
-            'token'=>'required',
-            'new_password' => 'required',
-            'confirm_password' =>  'required|same:new_password'
+            'password' => 'required|min:6',
+            'confirm_password' => 'required|same:password'
         ]);
+    
         if ($validator->fails()) {
             $errors = $validator->errors();
-            return  response()->json([
-                'message'  => 'Validation failed',
-                'errors' => $errors,
-                'status' => 400,
-                'success' => false
-            ]);
+            return response($errors);
         } else {
-            $token = $request->token;
-            $user = $request->user();
-            if ($user->tokens()->where('id', $token)->exists()) {
-                $user->update([
-                    'password' => Hash::make($request->new_password),
-                ]);
+            $password = Hash::make($request->input('password')); 
     
-                // Revoke old tokens
-                $user->tokens()->where('id', $token)->delete();
+            $user = Auth::user();
+            // return $user;
+    
+            if(!empty($user)){
+                $user1 = User::find($user->id);
+                $user1->update(['password' => $password]);
     
                 return response()->json([
                     'message'  => 'Password updated successfully',
                     'status' => 200,
                     'success' => true
                 ]);
-            } else{
+            } else {
                 return response()->json([
-                    'message'   => 'Invalid token or user not found. Please try again!',
-                    'status'    => 401,
-                    'success'   => false
-                ], 401);
+                    'message'  => 'User not found',
+                    'status' => 404,
+                    'success' => false
+                ]);
             }
         }
     }
 
+
+    public function getAllUsers(){
+        $user = User::all();
+        
+       
+        return response()->json($user);
+    }
+
+    public function show($id){
+        $user = User::find($id);
+        if (!$user) {
+            return response()->json([
+                "message" => "User Not Found",
+                "status" => 404
+            ], 404);
+        }else{
+            return response()->json($user);
+        }
+        }
+
+        public  function delete( $id){
+            $user = User::find($id);
+            if(!$user){
+                return response()->json([
+                   "message"=>"User not found",
+                   "status"=>404
+               ],404);
+           }else{
+               $user->delete();
+               return response()->json(['message' => 'User deleted successfully']);
+           }
+        }
+
+        public function update ( Request $request , $id){
+            $user = User::find($id);
+            if ($user) {
+                $user->name = $request->input('name');
+                $user->email = $request->input('email');
+                $user->password = Hash::make($request->input('password'));
+                $user->save();
+        
+                return response()->json(['message' => 'User update successfully']);
+            }  else {
+                return response()->json(['message' => 'User  not updated ']);
+             }
+    }
+}
+
+  
+    
+
     
 
 
-}
+
